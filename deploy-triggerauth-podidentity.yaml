@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azurequeue-function
+  namespace: default
+  labels:
+    app: azurequeue-function
+spec:
+  selector:
+    matchLabels:
+      app: azurequeue-function
+  template:
+    metadata:
+      labels:
+        app: azurequeue-function
+    spec:
+      containers:
+      - name: azurequeue-function
+        image: jeffhollan/queue-function
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: queue-triggerauth
+  namespace: default
+spec:
+  podIdentity:
+    provider: azure
+---
+apiVersion: keda.k8s.io/v1alpha1
+kind: ScaledObject
+metadata:
+  name: azure-queue-scaledobject
+  namespace: default
+  labels:
+    deploymentName: azurequeue-function
+spec:
+  scaleTargetRef:
+    deploymentName: azurequeue-function
+  triggers:
+  - type: azure-queue
+    metadata:
+      # Required
+      queueName: functionsqueue
+      queueLength: "5" # default 5
+    authenticationRef:
+      name: queue-triggerauth
